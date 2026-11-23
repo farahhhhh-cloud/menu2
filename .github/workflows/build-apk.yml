@@ -15,6 +15,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Find Flutter project
+        run: |
+          echo "Mencari project Flutter..."
+          find . -name "pubspec.yaml" -print
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -27,13 +32,42 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Fix Android Gradle versions
-        run: |
-          sed -i 's/com.android.application") version "9.1.0"/com.android.application") version "9.1.1"/' android/settings.gradle
-          sed -i 's/gradle-9.3.1-bin.zip/gradle-9.5.0-bin.zip/' android/gradle/wrapper/gradle-wrapper.properties
-
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Check Android files
+        run: |
+          echo "Mencari file Android..."
+          find . -path "*/android/settings.gradle" -o -path "*/android/settings.gradle.kts"
+          find . -path "*/android/gradle/wrapper/gradle-wrapper.properties"
+
+      - name: Fix Android Gradle Plugin
+        shell: bash
+        run: |
+          SETTINGS=$(find . -path "*/android/settings.gradle" -o -path "*/android/settings.gradle.kts" | head -n 1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "settings.gradle/settings.gradle.kts tidak ditemukan"
+            exit 1
+          fi
+
+          echo "File settings ditemukan: $SETTINGS"
+
+          sed -i 's/9\.1\.0/9.1.1/g' "$SETTINGS"
+
+      - name: Fix Gradle version
+        shell: bash
+        run: |
+          GRADLE_FILE=$(find . -path "*/android/gradle/wrapper/gradle-wrapper.properties" | head -n 1)
+
+          if [ -z "$GRADLE_FILE" ]; then
+            echo "gradle-wrapper.properties tidak ditemukan"
+            exit 1
+          fi
+
+          echo "File Gradle ditemukan: $GRADLE_FILE"
+
+          sed -i 's/gradle-9\.3\.1-bin\.zip/gradle-9.5.0-bin.zip/g' "$GRADLE_FILE"
 
       - name: Build APK
         run: flutter build apk --release
